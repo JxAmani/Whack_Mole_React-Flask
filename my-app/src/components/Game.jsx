@@ -76,7 +76,7 @@ function Game() {
     if (!player || !player.id) return;
     if (score > highScore) {
       try {
-        const res = await fetch(`https://whack-mole-react-flask.onrender.com/update-score/${player.id}`, {
+        const res = await fetch(`http://127.0.0.1:5000/api/update-score/${player.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ highscore: score }),

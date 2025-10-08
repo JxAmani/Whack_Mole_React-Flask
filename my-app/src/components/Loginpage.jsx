@@ -8,7 +8,7 @@ function Login() {
   const [loggedInUser, setLoggedInUser] = useState(null);
   const navigate = useNavigate();
 
-  // If user is already logged in, load them from sessionStorage
+  
   useEffect(() => {
     const storedUser = sessionStorage.getItem('loggedInUser');
     if (storedUser) {
@@ -25,11 +25,9 @@ function Login() {
     }
 
     try {
-      // Hash password for comparison with backend
+      // Hash password for security
       const hashedPassword = sha256(password);
-
-      // Send login data
-      const res = await fetch('http://127.0.0.1:5000/login', {
+      const res = await fetch('http://127.0.0.1:5000/api/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: characterName, password: hashedPassword }),
@@ -38,11 +36,10 @@ function Login() {
       const data = await res.json();
 
       if (res.ok) {
-        // Save logged-in user to sessionStorage
         sessionStorage.setItem('loggedInUser', JSON.stringify(data));
         setLoggedInUser(data);
         alert('Logged in successfully!');
-        navigate('/game'); // Go to game screen
+        navigate('/game');
       } else {
         alert(data.error || 'Invalid character name or password.');
       }
@@ -54,7 +51,6 @@ function Login() {
 
   const handleBack = () => navigate('/');
 
-  // If logged in, show welcome; otherwise, show login form
   return (
     <div style={styles.container}>
       <h2>Login Page</h2>

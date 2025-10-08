@@ -1,24 +1,26 @@
-import os
 from flask import Flask
-from flask_migrate import Migrate
 from flask_cors import CORS
-from models import db
-from routes import bp
-from dotenv import load_dotenv
+from db import db
+from routes import bp  
+import os
 
-load_dotenv()
+def create_app():
+    app = Flask(__name__)
 
-app = Flask(__name__)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL")
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+    app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL", "sqlite:///whack_mole.db")
+    app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
+    db.init_app(app)
+    CORS(app)
 
-CORS(app, origins=["http://localhost:5173"])
+    app.register_blueprint(bp, url_prefix="/api")
 
-db.init_app(app)
-migrate = Migrate(app, db)
+    with app.app_context():
+        db.create_all()
 
-app.register_blueprint(bp)
+    return app
+
+app = create_app()
 
 if __name__ == "__main__":
     app.run(debug=True)

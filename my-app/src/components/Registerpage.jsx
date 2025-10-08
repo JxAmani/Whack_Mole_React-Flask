@@ -1,23 +1,18 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { sha256 } from 'js-sha256'; // Used to hash passwords before sending
+import { sha256 } from 'js-sha256';
 
 function Register() {
-  // Manage form data with React state
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
 
-  // Runs when user clicks "Register"
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Hash password before sending to backend
       const hashedPassword = sha256(password);
-
-      // Send data to Flask backend
-      const res = await fetch('http://127.0.0.1:5000/register', {
+      const res = await fetch('http://127.0.0.1:5000/api/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, password: hashedPassword }),
@@ -27,7 +22,7 @@ function Register() {
 
       if (res.ok) {
         alert('Registration successful!');
-        navigate('/login'); // Redirect to login page
+        navigate('/login');
       } else {
         alert(data.error || 'Registration failed');
       }
@@ -37,7 +32,6 @@ function Register() {
     }
   };
 
-  // Basic form for registration
   return (
     <form onSubmit={handleSubmit} style={styles.form}>
       <h2>Create Your Character</h2>
@@ -69,7 +63,6 @@ function Register() {
   );
 }
 
-// Simple inline styling
 const styles = {
   form: {
     display: 'flex',
