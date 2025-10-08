@@ -10,6 +10,8 @@ python-dotenv = "*"
 flask-migrate = "*"
 flask-cors = "*"
 gunicorn = "*"
+flask-sqlalchemy = "*"
+psycopg = {extras = ["binary", "pool"], version = "*"}
 
 [dev-packages]
 
