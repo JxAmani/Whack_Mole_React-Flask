@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { sha256 } from 'js-sha256';
 
 function Register() {
   const [name, setName] = useState('');
@@ -10,10 +11,11 @@ function Register() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
+      const hashedPassword = sha256(password);
       const res = await fetch('http://127.0.0.1:5000/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, password }),
+        body: JSON.stringify({ name, email, password: hashedPassword }),
       });
       const data = await res.json();
       if (res.ok) {

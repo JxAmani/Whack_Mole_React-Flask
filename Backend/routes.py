@@ -13,7 +13,7 @@ def register():
         id=str(uuid.uuid4()),
         name=data["name"],
         email=data["email"],
-        password=data["password"]
+        password=data["password"]  
     )
     db.session.add(user)
     db.session.commit()

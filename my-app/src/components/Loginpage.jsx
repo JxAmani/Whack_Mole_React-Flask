@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { sha256 } from 'js-sha256';
 
 function Login() {
   const [characterName, setCharacterName] = useState('');
@@ -22,10 +23,11 @@ function Login() {
     }
 
     try {
+      const hashedPassword = sha256(password);
       const res = await fetch('http://127.0.0.1:5000/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: characterName, password }),
+        body: JSON.stringify({ name: characterName, password: hashedPassword }),
       });
       const data = await res.json();
       if (res.ok) {
