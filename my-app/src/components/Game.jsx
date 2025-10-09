@@ -3,64 +3,116 @@ import { useNavigate } from "react-router-dom";
 import "../index.css";
 
 import Hole from '../assets/Hole.jpeg';
-import mole from '../assets/mole.png';
+import moleImg from '../assets/mole.png';
+import bombImg from '../assets/Bomb.png';
 import whackMusic from '../assets/whack.mp3';
 
 function Game() {
   const [moles, setMoles] = useState(new Array(9).fill(false));
+  const [bombs, setBombs] = useState(new Array(9).fill(false));
   const [timer, setTimer] = useState(30);
   const [gameOver, setGameOver] = useState(false);
   const [score, setScore] = useState(0);
   const [highScore, setHighScore] = useState(0);
   const [player, setPlayer] = useState(null);
+  const [level, setLevel] = useState(1);
 
   const navigate = useNavigate();
   const audioRef = useRef(null);
+  const moleIntervalRef = useRef(null);
 
-  useEffect(() => {
-    if (audioRef.current) {
-      gameOver ? audioRef.current.pause() : audioRef.current.play();
-    }
-  }, [gameOver]);
+  const levelSpeed = {
+    1: 1000,
+    2: 800,
+    3: 600,
+    4: 400
+  };
 
+  // Load user & progress from sessionStorage
   useEffect(() => {
     const storedUser = sessionStorage.getItem('loggedInUser');
     if (storedUser) {
       const user = JSON.parse(storedUser);
       setPlayer(user);
       setHighScore(user.highscore || 0);
+
+      const savedScore = sessionStorage.getItem('currentScore');
+      const savedLevel = sessionStorage.getItem('currentLevel');
+      if (savedScore) setScore(Number(savedScore));
+      if (savedLevel) setLevel(Number(savedLevel));
     } else {
       alert('You must be logged in to play!');
       navigate('/login');
     }
   }, [navigate]);
 
+  // Play/pause background music
   useEffect(() => {
-    if (gameOver) return;
-    const interval = setInterval(() => {
-      const randomIndex = Math.floor(Math.random() * moles.length);
-      const newMoles = new Array(9).fill(false);
-      newMoles[randomIndex] = true;
-      setMoles(newMoles);
-    }, 1000);
-    return () => clearInterval(interval);
+    if (audioRef.current) {
+      gameOver ? audioRef.current.pause() : audioRef.current.play();
+    }
   }, [gameOver]);
 
+  // Mole + Bomb interval
   useEffect(() => {
-    if (timer <= 0) {
-      setGameOver(true);
-      setMoles(new Array(9).fill(false));
-      return;
-    }
-    const timerId = setInterval(() => setTimer(prev => prev - 1), 1000);
-    return () => clearInterval(timerId);
-  }, [timer]);
+    if (gameOver) return;
+    clearInterval(moleIntervalRef.current);
 
-  //save high score when game ends
+    moleIntervalRef.current = setInterval(() => {
+      // Mole
+      const moleIndex = Math.floor(Math.random() * 9);
+      const newMoles = new Array(9).fill(false);
+      newMoles[moleIndex] = true;
+      setMoles(newMoles);
+
+      // Bomb (level >= 3) — ensure it doesn't overlap mole
+      if (level >= 3) {
+        let bombIndex;
+        do {
+          bombIndex = Math.floor(Math.random() * 9);
+        } while (bombIndex === moleIndex); // prevent overlap
+        const newBombs = new Array(9).fill(false);
+        newBombs[bombIndex] = true;
+        setBombs(newBombs);
+      } else {
+        setBombs(new Array(9).fill(false));
+      }
+    }, levelSpeed[level]);
+
+    return () => clearInterval(moleIntervalRef.current);
+  }, [level, gameOver]);
+
+  // Timer countdown
   useEffect(() => {
-    if (gameOver) {
-      saveHighscore();
-    }
+    if (gameOver) return;
+    const timerId = setInterval(() => {
+      setTimer(prev => {
+        if (prev <= 1) {
+          setGameOver(true);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timerId);
+  }, [gameOver]);
+
+  // Update level based on score & save progress
+  useEffect(() => {
+    let nextLevel = 1;
+    if (score >= 400) nextLevel = 4;
+    else if (score >= 300) nextLevel = 3;
+    else if (score >= 200) nextLevel = 2;
+    setLevel(nextLevel);
+
+    sessionStorage.setItem('currentScore', score);
+    sessionStorage.setItem('currentLevel', nextLevel);
+  }, [score]);
+
+  // Save highscore on game over
+  useEffect(() => {
+    if (gameOver) saveHighscore();
   }, [gameOver]);
 
   const handleMoleClick = (index) => {
@@ -69,6 +121,15 @@ function Game() {
       const newMoles = [...moles];
       newMoles[index] = false;
       setMoles(newMoles);
+    }
+  };
+
+  const handleBombClick = (index) => {
+    if (bombs[index] && !gameOver) {
+      setScore(prev => Math.max(0, prev - 50));
+      const newBombs = [...bombs];
+      newBombs[index] = false;
+      setBombs(newBombs);
     }
   };
 
@@ -94,11 +155,13 @@ function Game() {
     }
   };
 
-  const handlePlayAgain = () => {
-    setScore(0);
+  const handlePlayAgain = (restartLevel = 1) => {
+    setScore(restartLevel === 1 ? 0 : score);
     setTimer(30);
     setGameOver(false);
     setMoles(new Array(9).fill(false));
+    setBombs(new Array(9).fill(false));
+    if (restartLevel !== 1) setLevel(restartLevel);
   };
 
   return (
@@ -117,7 +180,7 @@ function Game() {
         marginBottom: '10px',
         marginTop: '10px'
       }}>
-        🎮 Player: {player?.name}
+        🎮 Player: {player?.name} | Level: {level}
       </div>
 
       <div className="status-bar" style={{ display: 'flex', gap: '20px', marginBottom: '10px' }}>
@@ -157,22 +220,33 @@ function Game() {
       </div>
 
       <div className="grid">
-        {moles.map((isMole, index) => (
-          <img
-            key={index}
-            src={isMole ? mole : Hole}
-            alt={isMole ? "Mole" : "Hole"}
-            className="grid-cell"
-            onClick={() => handleMoleClick(index)}
-          />
-        ))}
+        {moles.map((isMole, index) => {
+          const isBomb = bombs[index];
+          return (
+            <img
+              key={index}
+              src={isMole ? moleImg : isBomb ? bombImg : Hole}
+              alt={isMole ? "Mole" : isBomb ? "Bomb" : "Hole"}
+              className="grid-cell"
+              onClick={() => {
+                if (isMole) handleMoleClick(index);
+                else if (isBomb) handleBombClick(index);
+              }}
+            />
+          );
+        })}
       </div>
 
       {gameOver && (
         <div className="game-over-modal">
           GAME OVER!
-          <div>
-            <button onClick={handlePlayAgain}>Play Again</button>
+          <div style={{ marginTop: '10px' }}>
+            <button onClick={() => handlePlayAgain()}>Play Again (Level 1)</button>
+            {level > 1 && (
+              <button onClick={() => handlePlayAgain(level)} style={{ marginLeft: '10px' }}>
+                Restart Level {level}
+              </button>
+            )}
             <button onClick={() => navigate('/')} style={{ marginLeft: '10px' }}>Home</button>
           </div>
         </div>
